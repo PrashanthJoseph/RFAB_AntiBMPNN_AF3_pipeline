@@ -1,9 +1,10 @@
 from abnumber import Chain
-from __future__ import annotations
 import re
+from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List, Tuple, Optional, Literal, Any
 import pandas as pd
+
 
 # ============================================================
 # FASTA: records contain "LCSEQ:HCSEQ" (separated by ':')
@@ -170,9 +171,8 @@ def build_rules() -> List[MotifRule]:
         MotifRule("Trp oxidation", "TrpOx", "Medium",        "W (CDRs)",                     "cdr", re.compile(r"W")),
         MotifRule("Met oxidation", "MetOx", "Medium",        "M (CDRs)",                     "cdr", re.compile(r"M")),
         MotifRule("Deamidation (low)", "DeAmdL", "Low",      "[STK]N (CDRs)",                "cdr", re.compile(r"[STK]N")),
-        MotifRule("Integrin binding", "IntBind", "Low",      "GPR|RGD|RYD|LDV|DGE|KGD|NGR",  "all", re.compile(r"(GPR|RGD|RYD|LDV|DGE|KGD|NGR)")),
+        MotifRule("Integrin binding", "IntBind", "Low",      "GPR|RGD|RYD|LDV|DGE|KGD|NGR",  "all", re.compile(r"(?:GPR|RGD|RYD|LDV|DGE|KGD|NGR)")),
     ]
-
 
 # ============================================================
 # Annotator
@@ -257,23 +257,28 @@ class AntibodyMotifAnnotator:
                 for region in regions_to_scan:
                     s0, e0 = region.slice0()
                     sub = chain_seq[s0:e0]
-                    for m in rule.pattern.finditer(sub):
+                    overlap_pattern = re.compile(f"(?=({rule.pattern.pattern}))")
+
+                    for m in overlap_pattern.finditer(sub):
+                        match = m.group(1)
+                        if not match:
+                            continue
+                    
                         start1 = region.start + m.start()
-                        end1 = region.start + m.end() - 1
-                        hits.append(
-                            {
-                                "SequenceID": seq_id,
-                                "Chain": chain_label,
-                                "Region": region.name,
-                                "Name": rule.name,
-                                "Flag": rule.flag,
-                                "Severity": rule.severity,
-                                "Match": m.group(0),
-                                "HitDetail": f"{m.group(0)}@{chain_label}{start1}-{end1}",
-                                "Start": start1,
-                                "End": end1,
-                            }
-                        )
+                        end1 = start1 + len(match) - 1
+                    
+                        hits.append({
+                            "SequenceID": seq_id,
+                            "Chain": chain_label,
+                            "Region": region.name,
+                            "Name": rule.name,
+                            "Flag": rule.flag,
+                            "Severity": rule.severity,
+                            "Match": match,
+                            "HitDetail": f"{match}@{chain_label}{start1}-{end1}",
+                            "Start": start1,
+                            "End": end1,
+                        })
 
         detailed_df = pd.DataFrame(hits)
 
