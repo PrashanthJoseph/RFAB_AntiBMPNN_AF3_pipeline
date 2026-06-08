@@ -1,16 +1,9 @@
 from abnumber import Chain
-import re
-
-
 from __future__ import annotations
-
 import re
 from dataclasses import dataclass
 from typing import Dict, List, Tuple, Optional, Literal, Any
-
 import pandas as pd
-from abnumber import Chain
-
 
 # ============================================================
 # FASTA: records contain "LCSEQ:HCSEQ" (separated by ':')
